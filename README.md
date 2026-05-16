@@ -111,7 +111,7 @@ package.json
 ## 2. Add your Groq API key
 
 ```env
-GROQ_API_KEY=gsk_...
+GROQ_API_KEY=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
 ```
 
 Get your API key from:
