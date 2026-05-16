@@ -490,6 +490,111 @@ If expanded into production, recommended enhancements include:
 
 ---
 
+# Testing
+
+## Setup
+
+Jest is configured with the Next.js transformer via `next/jest.js`. The full setup includes:
+
+**`jest.config.ts`** — root config
+
+* Uses `createJestConfig` from `next/jest.js` for SWC transforms and path alias resolution (`@/*` → `src/*`)
+* `testEnvironment`: `jsdom`
+* `setupFilesAfterEnv`: `jest.setup.ts`
+* Module name mappers for CSS (`identity-obj-proxy`), static assets, and Lottie JSON files
+* `transformIgnorePatterns` allows `lottie-react` to be transformed
+
+**`jest.setup.ts`** — global test environment
+
+* Imports `@testing-library/jest-dom` for extended matchers (`toBeInTheDocument`, `toHaveTextContent`, etc.)
+* Stubs browser APIs not available in jsdom: `window.matchMedia`, `ResizeObserver`, `IntersectionObserver`, `window.scrollTo`, `Element.prototype.scrollIntoView`
+* Inline `localStorage` / `sessionStorage` mock using `jest.fn()` backed by an in-memory store
+* Web API polyfills for `Request` and `Response` (required by Next.js App Router route handlers)
+* `beforeEach` resets all mock state between tests
+
+## npm Scripts
+
+| Script | Command |
+| --- | --- |
+| Run tests | `npm test` |
+| Watch mode | `npm run test:watch` |
+| Coverage report | `npm run test:coverage` |
+
+## Mocks
+
+### Global mocks (`__mocks__/`)
+
+| File | Purpose |
+| --- | --- |
+| `__mocks__/axios.ts` | Full axios mock — `get`, `post`, `put`, `patch`, `delete`, `create`, interceptors, `isAxiosError` |
+| `__mocks__/react-i18next.tsx` | `useTranslation` returns `t = key => key` passthrough; `I18nextProvider` is a passthrough; `initReactI18next` stub |
+| `__mocks__/lottie-react.tsx` | Returns `<div data-testid="lottie-animation" />` |
+| `__mocks__/lucide-react.tsx` | Each named icon renders `<svg data-testid="icon-{Name}" />`; Proxy catch-all for any unlisted icon |
+| `__mocks__/next/server.ts` | `NextResponse.json()` mock — avoids full Next.js runtime dependency in route handler tests |
+| `__mocks__/fileMock.ts` | Static asset stub — returns `"test-file-stub"` |
+| `__mocks__/lottieMock.ts` | Minimal Lottie JSON fixture |
+
+### Source-level mocks (`src/__mocks__/`)
+
+| File | Purpose |
+| --- | --- |
+| `src/__mocks__/components/providers/AppProviders.ts` | `useLanguage` jest.fn returning `{ language: 'en', setLanguage: jest.fn() }`; `AppProviders` passthrough |
+| `src/__mocks__/lib/draft-storage.ts` | `loadDraft`, `saveDraft`, `clearDraft` all jest.fn; default `loadDraft` returns `null` |
+| `src/__mocks__/hooks/usePrefersReducedMotion.ts` | Returns `false` by default |
+| `src/__mocks__/lib/application-validation.ts` | `applicationPayloadSchema.safeParse` jest.fn returning `{ success: true, data }` |
+| `src/__mocks__/types/application.ts` | Re-exports real types and constants |
+| `src/__mocks__/i18n/client.ts` | Full i18n stub with `changeLanguage`, `t`, `dir`, `on`, `off` |
+| `src/__mocks__/components/wizard/*.ts` | Lightweight stub renders for `ProgressBar`, `StepPersonal`, `StepFamily`, `StepSituation`, `AiSuggestionDialog` |
+
+## Test Files
+
+| Test File | Source File Covered |
+| --- | --- |
+| `src/__tests__/setup.smoke.test.ts` | Jest + jsdom environment sanity check |
+| `src/__tests__/hooks/usePrefersReducedMotion.test.ts` | `hooks/usePrefersReducedMotion.ts` |
+| `src/__tests__/lib/draft-storage.test.ts` | `lib/draft-storage.ts` |
+| `src/__tests__/lib/application-validation.test.ts` | `lib/application-validation.ts` |
+| `src/__tests__/i18n/client.test.ts` | `i18n/client.ts` |
+| `src/__tests__/app/page.test.tsx` | `app/page.tsx` |
+| `src/__tests__/app/api/submit.test.ts` | `app/api/submit/route.ts` |
+| `src/__tests__/app/api/compose.test.ts` | `app/api/compose/route.ts` |
+| `src/__tests__/components/wizard/ProgressBar.test.tsx` | `components/wizard/ProgressBar.tsx` |
+| `src/__tests__/components/wizard/FormField.test.tsx` | `components/wizard/FormField.tsx` |
+| `src/__tests__/components/wizard/StepPersonal.test.tsx` | `components/wizard/StepPersonal.tsx` |
+| `src/__tests__/components/wizard/StepFamily.test.tsx` | `components/wizard/StepFamily.tsx` |
+| `src/__tests__/components/wizard/StepSituation.test.tsx` | `components/wizard/StepSituation.tsx` |
+| `src/__tests__/components/providers/AppProviders.test.tsx` | `components/providers/AppProviders.tsx` |
+| `src/__tests__/components/wizard/AiSuggestionDialog.test.tsx` | `components/wizard/AiSuggestionDialog.tsx` |
+| `src/__tests__/components/wizard/ApplicationWizard.test.tsx` | `components/wizard/ApplicationWizard.tsx` |
+
+## Coverage Summary
+
+Results from `npm run test:coverage` (239 tests across 16 test suites):
+
+| File | Statements | Branches | Functions | Lines |
+| --- | --- | --- | --- | --- |
+| **All files** | **98.10%** | **94.42%** | **96.87%** | **99.74%** |
+| app/page.tsx | 100% | 100% | 100% | 100% |
+| app/api/compose/route.ts | 97.18% | 93.10% | 71.42% | 100% |
+| app/api/submit/route.ts | 93.75% | 75.00% | 100% | 93.75% |
+| components/providers/AppProviders.tsx | 100% | 100% | 100% | 100% |
+| components/wizard/AiSuggestionDialog.tsx | 100% | 100% | 100% | 100% |
+| components/wizard/ApplicationWizard.tsx | 100% | 93.67% | 100% | 100% |
+| components/wizard/FormField.tsx | 100% | 100% | 100% | 100% |
+| components/wizard/ProgressBar.tsx | 100% | 100% | 100% | 100% |
+| components/wizard/StepFamily.tsx | 93.33% | 94.44% | 100% | 100% |
+| components/wizard/StepPersonal.tsx | 100% | 100% | 100% | 100% |
+| components/wizard/StepSituation.tsx | 100% | 100% | 100% | 100% |
+| hooks/usePrefersReducedMotion.ts | 100% | 100% | 100% | 100% |
+| i18n/client.ts | 92.85% | 83.33% | 100% | 100% |
+| lib/application-validation.ts | 100% | 100% | 100% | 100% |
+| lib/draft-storage.ts | 86.95% | 76.92% | 100% | 100% |
+| types/application.ts | 100% | 100% | 100% | 100% |
+
+> Note: The remaining branch gaps in `draft-storage.ts` and `i18n/client.ts` are `typeof window === 'undefined'` and `i18n.isInitialized` SSR guards that are not reachable in a jsdom test environment by design.
+
+---
+
 # License
 
 ```txt
