@@ -495,5 +495,3 @@ If expanded into production, recommended enhancements include:
 ```txt
 Private / Assessment Use
 ```
-
-Add your own license if distributing publicly.
